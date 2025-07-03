@@ -1,1 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');\n@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');\n\nbody {\n  font-family: 'Poppins', sans-serif;\n}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
+
+body {
+  font-family: 'Poppins', sans-serif;
+}
