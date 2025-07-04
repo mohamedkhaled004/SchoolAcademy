@@ -24,6 +24,9 @@ interface Class {
   is_free: boolean;
 }
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const assetUrl = (path: string) => `${API_BASE.replace(/\/api$/, '')}${path}`;
+
 const TeacherProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user, logout } = useAuth();
@@ -63,8 +66,8 @@ const TeacherProfile: React.FC = () => {
   const fetchTeacherData = async () => {
     try {
       const [teacherRes, classesRes] = await Promise.all([
-        axios.get(`http://localhost:3001/api/teachers/${id}`),
-        axios.get(`http://localhost:3001/api/classes?teacher_id=${id}`)
+        axios.get(`${API_BASE}/teachers/${id}`),
+        axios.get(`${API_BASE}/classes?teacher_id=${id}`)
       ]);
       setTeacher(teacherRes.data);
       setClasses(classesRes.data);
@@ -90,7 +93,7 @@ const TeacherProfile: React.FC = () => {
 
     if (classItem.is_free) {
       try {
-        const response = await axios.post('http://localhost:3001/api/enroll-free', {
+        const response = await axios.post(`${API_BASE}/enroll-free`, {
           class_id: classItem.id
         });
         
@@ -135,7 +138,7 @@ const TeacherProfile: React.FC = () => {
     setIsRedeeming(true);
     setCodeError('');
     try {
-      const response = await axios.post('http://localhost:3001/api/redeem-code', {
+      const response = await axios.post(`${API_BASE}/redeem-code`, {
         code: accessCode.trim()
       });
       if (response.data.success) {
@@ -258,7 +261,7 @@ const TeacherProfile: React.FC = () => {
             <div className="relative">
               {teacher.photo ? (
                 <img
-                  src={`http://localhost:3001${teacher.photo}`}
+                  src={assetUrl(teacher.photo)}
                   alt={teacher.name}
                   className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
                 />
@@ -300,7 +303,7 @@ const TeacherProfile: React.FC = () => {
                 <div className="relative h-48 bg-gradient-to-br from-blue-400 to-indigo-500">
                   {classItem.thumbnail ? (
                     <img
-                      src={`http://localhost:3001${classItem.thumbnail}`}
+                      src={assetUrl(classItem.thumbnail)}
                       alt={classItem.title}
                       className="w-full h-full object-cover"
                     />

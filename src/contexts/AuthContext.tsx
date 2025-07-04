@@ -35,6 +35,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
   // Add axios interceptor for automatic token handling
   useEffect(() => {
     const requestInterceptor = axios.interceptors.request.use(
@@ -75,7 +77,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       // Make a simple API call to validate the token
-      await axios.get('http://localhost:3001/api/validate-token');
+      await axios.get(`${API_BASE}/validate-token`);
       return true;
     } catch (error) {
       // Token is invalid, clear it
@@ -104,7 +106,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post('http://localhost:3001/api/auth/login', {
+      const response = await axios.post(`${API_BASE}/auth/login`, {
         email,
         password,
       });
@@ -128,7 +130,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     country: string
   ) => {
     try {
-      const response = await axios.post('http://localhost:3001/api/auth/register', {
+      const response = await axios.post(`${API_BASE}/auth/register`, {
         email,
         password,
         name,

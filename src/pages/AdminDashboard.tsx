@@ -34,6 +34,9 @@ interface AccessCode {
   created_at: string;
 }
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const assetUrl = (path: string) => `${API_BASE.replace(/\/api$/, '')}${path}`;
+
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('teachers');
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -104,9 +107,9 @@ const AdminDashboard: React.FC = () => {
     setLoading(true);
     try {
       const [teachersRes, classesRes, codesRes] = await Promise.all([
-        axios.get('http://localhost:3001/api/teachers'),
-        axios.get('http://localhost:3001/api/classes'),
-        axios.get('http://localhost:3001/api/access-codes')
+        axios.get(`${API_BASE}/teachers`),
+        axios.get(`${API_BASE}/classes`),
+        axios.get(`${API_BASE}/access-codes`)
       ]);
       setTeachers(teachersRes.data);
       setClasses(classesRes.data);
@@ -132,7 +135,7 @@ const AdminDashboard: React.FC = () => {
     }
 
     try {
-      await axios.post('http://localhost:3001/api/teachers', formData, {
+      await axios.post(`${API_BASE}/teachers`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       showSnackbar(t('Teacher added successfully! Welcome aboard!'));
@@ -159,7 +162,7 @@ const AdminDashboard: React.FC = () => {
     }
 
     try {
-      await axios.post('http://localhost:3001/api/classes', formData, {
+      await axios.post(`${API_BASE}/classes`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       showSnackbar(t('Class added successfully!'));
@@ -176,7 +179,7 @@ const AdminDashboard: React.FC = () => {
     setSuccess('');
 
     try {
-      const response = await axios.post('http://localhost:3001/api/access-codes', {
+      const response = await axios.post(`${API_BASE}/access-codes`, {
         class_id: parseInt(codeForm.class_id),
         price: parseFloat(codeForm.price)
       });
@@ -213,13 +216,13 @@ const AdminDashboard: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       if (confirmDialog.type === 'teacher') {
-        await axios.delete(`http://localhost:3001/api/teachers/${confirmDialog.id}`, {
+        await axios.delete(`${API_BASE}/teachers/${confirmDialog.id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setTeachers((prev) => prev.filter((t) => t.id !== confirmDialog.id));
         showSnackbar(t('Teacher deleted successfully!'));
       } else {
-        await axios.delete(`http://localhost:3001/api/classes/${confirmDialog.id}`, {
+        await axios.delete(`${API_BASE}/classes/${confirmDialog.id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setClasses((prev) => prev.filter((c) => c.id !== confirmDialog.id));
@@ -628,7 +631,7 @@ const EditClassModal = ({ open, onClose, classItem, onSave }: any) => {
         formData.append('thumbnail', form.thumbnail);
       }
       const token = localStorage.getItem('token');
-      await axios.put(`http://localhost:3001/api/videos/${classItem.id}`, formData, {
+      await axios.put(`${API_BASE}/videos/${classItem.id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           Authorization: `Bearer ${token}`,
@@ -707,7 +710,7 @@ const TeacherCard = ({ teacher, onDelete, t }: any) => (
     <div className="flex items-center gap-4 w-full">
       <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center overflow-hidden">
         {teacher.photo ? (
-          <img src={`http://localhost:3001${teacher.photo}`} alt={teacher.name} className="w-full h-full object-cover" />
+          <img src={assetUrl(teacher.photo)} alt={teacher.name} className="w-full h-full object-cover" />
         ) : (
           <Users className="h-8 w-8 text-blue-400 dark:text-blue-300" />
         )}
@@ -733,7 +736,7 @@ const ClassCard = ({ classItem, onEdit, onDelete, t }: any) => (
     <div className="flex items-center gap-4">
       <div className="w-20 h-16 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
         {classItem.thumbnail ? (
-          <img src={`http://localhost:3001${classItem.thumbnail}`} alt={classItem.title} className="w-full h-full object-cover" />
+          <img src={assetUrl(classItem.thumbnail)} alt={classItem.title} className="w-full h-full object-cover" />
         ) : (
           <BookOpen className="h-8 w-8 text-gray-400 dark:text-gray-500" />
         )}

@@ -47,6 +47,8 @@ const AdminStudents: React.FC = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [editingPassword, setEditingPassword] = useState('');
 
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
   // Check if user is admin
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -58,7 +60,7 @@ const AdminStudents: React.FC = () => {
 
   const fetchStudents = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/admin/students');
+      const response = await axios.get(`${API_BASE}/admin/students`);
       setStudents(response.data);
     } catch (error: any) {
       if (error.response?.status === 403) {
@@ -95,7 +97,7 @@ const AdminStudents: React.FC = () => {
     if (!editingData) return;
 
     try {
-      await axios.put(`http://localhost:3001/api/admin/students/${editingData.id}`, editingData);
+      await axios.put(`${API_BASE}/admin/students/${editingData.id}`, editingData);
       setSuccess('Student updated successfully');
       setEditingId(null);
       setEditingData(null);
@@ -105,11 +107,9 @@ const AdminStudents: React.FC = () => {
     }
   };
 
-
-
   const deleteStudent = async (id: number) => {
     try {
-      await axios.delete(`http://localhost:3001/api/admin/students/${id}`);
+      await axios.delete(`${API_BASE}/admin/students/${id}`);
       setSuccess('Student deleted successfully');
       setDeleteConfirm(null);
       fetchStudents(); // Refresh the list
@@ -340,8 +340,6 @@ const AdminStudents: React.FC = () => {
           </div>
         )}
       </div>
-
-
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (

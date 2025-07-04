@@ -38,6 +38,9 @@ const HomePage: React.FC = () => {
   const [statsLoading, setStatsLoading] = useState(true);
   const [hoveredTeacher, setHoveredTeacher] = useState<number | null>(null);
 
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+  const assetUrl = (path: string) => `${API_BASE.replace(/\/api$/, '')}${path}`;
+
   useEffect(() => {
     fetchTeachers();
     fetchStats();
@@ -45,7 +48,7 @@ const HomePage: React.FC = () => {
 
   const fetchTeachers = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/teachers');
+      const response = await axios.get(`${API_BASE}/teachers`);
       setTeachers(response.data);
     } catch (error) {
       console.error('Error fetching teachers:', error);
@@ -57,9 +60,9 @@ const HomePage: React.FC = () => {
   const fetchStats = async () => {
     try {
       const [studentsRes, teachersRes, classesRes] = await Promise.all([
-        axios.get('http://localhost:3001/api/stats/students'),
-        axios.get('http://localhost:3001/api/stats/teachers'),
-        axios.get('http://localhost:3001/api/stats/classes')
+        axios.get(`${API_BASE}/stats/students`),
+        axios.get(`${API_BASE}/stats/teachers`),
+        axios.get(`${API_BASE}/stats/classes`)
       ]);
       
       setStats({
@@ -183,7 +186,7 @@ const HomePage: React.FC = () => {
                   <div className="relative h-72 overflow-hidden">
                     {teacher.photo ? (
                       <img
-                        src={`http://localhost:3001${teacher.photo}`}
+                        src={assetUrl(teacher.photo)}
                         alt={teacher.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                       />

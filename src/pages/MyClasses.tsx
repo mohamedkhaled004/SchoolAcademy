@@ -15,6 +15,9 @@ interface EnrolledClass {
   enrolled_at: string;
 }
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const assetUrl = (path: string) => `${API_BASE.replace(/\/api$/, '')}${path}`;
+
 const MyClasses: React.FC = () => {
   const [classes, setClasses] = useState<EnrolledClass[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +29,7 @@ const MyClasses: React.FC = () => {
 
   const fetchMyClasses = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/my-classes');
+      const response = await axios.get(`${API_BASE}/my-classes`);
       setClasses(response.data);
     } catch (error) {
       setError('Failed to load your classes');
@@ -89,7 +92,7 @@ const MyClasses: React.FC = () => {
                 <div className="relative h-48 bg-gradient-to-br from-blue-400 to-indigo-500">
                   {classItem.thumbnail ? (
                     <img
-                      src={`http://localhost:3001${classItem.thumbnail}`}
+                      src={assetUrl(classItem.thumbnail)}
                       alt={classItem.title}
                       className="w-full h-full object-cover"
                     />

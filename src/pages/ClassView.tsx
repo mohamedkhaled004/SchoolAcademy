@@ -16,6 +16,9 @@ interface Class {
   teacher_name: string;
 }
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const assetUrl = (path: string) => `${API_BASE.replace(/\/api$/, '')}${path}`;
+
 const ClassView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user, logout } = useAuth();
@@ -41,8 +44,8 @@ const ClassView: React.FC = () => {
   const fetchClassData = async () => {
     try {
       const [accessRes, classesRes] = await Promise.all([
-        axios.get(`http://localhost:3001/api/check-access/${id}`),
-        axios.get('http://localhost:3001/api/classes')
+        axios.get(`${API_BASE}/check-access/${id}`),
+        axios.get(`${API_BASE}/classes`)
       ]);
       
       setHasAccess(accessRes.data.hasAccess);
@@ -142,7 +145,7 @@ const ClassView: React.FC = () => {
           <div className="relative h-64 bg-gradient-to-br from-blue-400 to-indigo-500">
             {classData.thumbnail ? (
               <img
-                src={`http://localhost:3001${classData.thumbnail}`}
+                src={assetUrl(classData.thumbnail)}
                 alt={classData.title}
                 className="w-full h-full object-cover"
               />
