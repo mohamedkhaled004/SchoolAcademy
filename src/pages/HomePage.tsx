@@ -13,7 +13,9 @@ import {
   Shield,
   Zap,
   Globe,
-  TrendingUp
+  TrendingUp,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import HeroSlider from '../components/HeroSlider';
 
@@ -31,51 +33,202 @@ interface Stats {
   classes: number;
 }
 
+// API Configuration with validation and fallbacks
+const getApiBaseUrl = (): string => {
+  const apiBase = import.meta.env.VITE_API_BASE_URL;
+  
+  // Log the API base URL for debugging (only in development)
+  if (import.meta.env.DEV) {
+    console.log('🔧 API_BASE_URL:', apiBase);
+    console.log('🔧 Environment variables:', {
+      VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+      MODE: import.meta.env.MODE,
+      DEV: import.meta.env.DEV
+    });
+  }
+  
+  // Validate API_BASE_URL
+  if (!apiBase) {
+    console.error('❌ VITE_API_BASE_URL is not defined in .env file');
+    console.error('💡 Please create a .env file with: VITE_API_BASE_URL=http://localhost:5000/api');
+    return '';
+  }
+  
+  if (typeof apiBase !== 'string') {
+    console.error('❌ VITE_API_BASE_URL must be a string, got:', typeof apiBase);
+    return '';
+  }
+  
+  // Ensure the URL ends with /api
+  const normalizedApiBase = apiBase.endsWith('/api') ? apiBase : `${apiBase.replace(/\/$/, '')}/api`;
+  
+  if (import.meta.env.DEV) {
+    console.log('✅ Using API_BASE_URL:', normalizedApiBase);
+  }
+  
+  return normalizedApiBase;
+};
+
+// Enhanced error handling utility
+const handleApiError = (error: any, operation: string): void => {
+  console.error(`❌ Error ${operation}:`, error);
+  
+  if (axios.isAxiosError(error)) {
+    console.error('📡 Axios Error Details:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      method: error.config?.method,
+      data: error.response?.data
+    });
+    
+    if (error.code === 'ERR_NETWORK') {
+      console.error('🌐 Network Error: Check if the backend server is running');
+    }
+    
+    if (error.response?.status === 404) {
+      console.error('🔍 404 Error: API endpoint not found');
+    }
+  }
+};
+
 const HomePage: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [stats, setStats] = useState<Stats>({ students: 0, teachers: 0, classes: 0 });
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [hoveredTeacher, setHoveredTeacher] = useState<number | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL;
-  const assetUrl = (path: string) => `${API_BASE.replace(/\/api$/, '')}${path}`;
+  const API_BASE = getApiBaseUrl();
+  const assetUrl = (path: string) => API_BASE ? `${API_BASE.replace(/\/api$/, '')}${path}` : '';
 
   useEffect(() => {
-    fetchTeachers();
-    fetchStats();
-  }, []);
+    if (API_BASE) {
+      fetchTeachers();
+      fetchStats();
+    } else {
+      setApiError('API configuration is missing. Please check your .env file.');
+      setLoading(false);
+      setStatsLoading(false);
+    }
+  }, [API_BASE]);
 
   const fetchTeachers = async () => {
+    if (!API_BASE) {
+      console.error('❌ Cannot fetch teachers: API_BASE is not configured');
+      setApiError('API configuration is missing');
+      setLoading(false);
+      return;
+    }
+
     try {
+      console.log('📡 Fetching teachers from:', `${API_BASE}/teachers`);
       const response = await axios.get(`${API_BASE}/teachers`);
-      setTeachers(response.data);
+      
+      // Enhanced data validation
+      const data = response.data;
+      console.log('📦 Teachers response:', data);
+      
+      if (Array.isArray(data)) {
+        setTeachers(data);
+        console.log(`✅ Loaded ${data.length} teachers`);
+      } else if (data && Array.isArray(data.teachers)) {
+        setTeachers(data.teachers);
+        console.log(`✅ Loaded ${data.teachers.length} teachers from nested object`);
+      } else {
+        console.warn('⚠️ Unexpected teachers data format:', data);
+        setTeachers([]);
+      }
+      
+      setApiError(null);
     } catch (error) {
-      console.error('Error fetching teachers:', error);
+      handleApiError(error, 'fetching teachers');
+      setTeachers([]);
+      setApiError('Failed to load teachers. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
   const fetchStats = async () => {
+    if (!API_BASE) {
+      console.error('❌ Cannot fetch stats: API_BASE is not configured');
+      setApiError('API configuration is missing');
+      setStatsLoading(false);
+      return;
+    }
+
     try {
+      console.log('📡 Fetching stats from:', `${API_BASE}/stats/*`);
       const [studentsRes, teachersRes, classesRes] = await Promise.all([
         axios.get(`${API_BASE}/stats/students`),
         axios.get(`${API_BASE}/stats/teachers`),
         axios.get(`${API_BASE}/stats/classes`)
       ]);
       
-      setStats({
-        students: studentsRes.data.count,
-        teachers: teachersRes.data.count,
-        classes: classesRes.data.count
-      });
+      const newStats = {
+        students: studentsRes.data.count || 0,
+        teachers: teachersRes.data.count || 0,
+        classes: classesRes.data.count || 0
+      };
+      
+      console.log('📊 Stats loaded:', newStats);
+      setStats(newStats);
+      setApiError(null);
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      handleApiError(error, 'fetching stats');
+      setStats({ students: 0, teachers: 0, classes: 0 });
+      setApiError('Failed to load statistics. Please try again later.');
     } finally {
       setStatsLoading(false);
     }
   };
+
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    setApiError(null);
+    setLoading(true);
+    setStatsLoading(true);
+    fetchTeachers();
+    fetchStats();
+  };
+
+  // Error UI Component
+  const ErrorDisplay = ({ message, onRetry }: { message: string; onRetry: () => void }) => (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="max-w-md mx-auto text-center p-8">
+        <div className="bg-red-100 dark:bg-red-900/30 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <AlertTriangle className="h-10 w-10 text-red-600 dark:text-red-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
+          Connection Error
+        </h2>
+        <p className="text-slate-600 dark:text-gray-300 mb-6 leading-relaxed">
+          {message}
+        </p>
+        <div className="space-y-3">
+          <button
+            onClick={onRetry}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors duration-300 flex items-center justify-center"
+          >
+            <RefreshCw className="h-5 w-5 mr-2" />
+            Try Again
+          </button>
+          <p className="text-sm text-slate-500 dark:text-gray-400">
+            Attempt {retryCount + 1} of 3
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Show error display if API is not configured or after multiple retries
+  if (apiError && retryCount >= 2) {
+    return <ErrorDisplay message={apiError} onRetry={handleRetry} />;
+  }
 
   if (loading) {
     return (

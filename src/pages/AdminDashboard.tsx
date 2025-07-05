@@ -111,11 +111,46 @@ const AdminDashboard: React.FC = () => {
         axios.get(`${API_BASE}/classes`),
         axios.get(`${API_BASE}/access-codes`)
       ]);
-      setTeachers(teachersRes.data);
-      setClasses(classesRes.data);
-      setAccessCodes(codesRes.data);
+      
+      // Safely handle teachers data
+      const teachersData = teachersRes.data;
+      if (Array.isArray(teachersData)) {
+        setTeachers(teachersData);
+      } else if (teachersData && Array.isArray(teachersData.teachers)) {
+        setTeachers(teachersData.teachers);
+      } else {
+        console.warn('Unexpected teachers data format:', teachersData);
+        setTeachers([]);
+      }
+      
+      // Safely handle classes data
+      const classesData = classesRes.data;
+      if (Array.isArray(classesData)) {
+        setClasses(classesData);
+      } else if (classesData && Array.isArray(classesData.classes)) {
+        setClasses(classesData.classes);
+      } else {
+        console.warn('Unexpected classes data format:', classesData);
+        setClasses([]);
+      }
+      
+      // Safely handle access codes data
+      const codesData = codesRes.data;
+      if (Array.isArray(codesData)) {
+        setAccessCodes(codesData);
+      } else if (codesData && Array.isArray(codesData.accessCodes)) {
+        setAccessCodes(codesData.accessCodes);
+      } else {
+        console.warn('Unexpected access codes data format:', codesData);
+        setAccessCodes([]);
+      }
     } catch (error) {
+      console.error('Failed to fetch data:', error);
       setError('Failed to fetch data');
+      // Set empty arrays to prevent map errors
+      setTeachers([]);
+      setClasses([]);
+      setAccessCodes([]);
     } finally {
       setLoading(false);
     }
@@ -126,23 +161,65 @@ const AdminDashboard: React.FC = () => {
     setError('');
     setSuccess('');
 
+    // ✅ Enhanced validation
+    if (!teacherForm.name.trim()) {
+      setError('Teacher name is required');
+      return;
+    }
+    if (!teacherForm.subject.trim()) {
+      setError('Subject is required');
+      return;
+    }
+
     const formData = new FormData();
-    formData.append('name', teacherForm.name);
-    formData.append('bio', teacherForm.bio);
-    formData.append('subject', teacherForm.subject);
+    formData.append('name', teacherForm.name.trim());
+    formData.append('bio', teacherForm.bio.trim());
+    formData.append('subject', teacherForm.subject.trim());
     if (teacherForm.photo) {
       formData.append('photo', teacherForm.photo);
     }
 
     try {
-      await axios.post(`${API_BASE}/teachers`, formData, {
+      console.log('Adding teacher with data:', {
+        name: teacherForm.name,
+        bio: teacherForm.bio,
+        subject: teacherForm.subject,
+        hasPhoto: !!teacherForm.photo
+      });
+
+      const response = await axios.post(`${API_BASE}/teachers`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+      
+      console.log('Teacher added successfully:', response.data);
       showSnackbar(t('Teacher added successfully! Welcome aboard!'));
       setTeacherForm({ name: '', bio: '', subject: '', photo: null });
       fetchData();
-    } catch (error) {
-      setError('Failed to add teacher');
+    } catch (error: any) {
+      console.error('Add teacher error:', error);
+      
+      // ✅ Enhanced error handling with 404 specific handling
+      if (error.response?.status === 404) {
+        setError(`API endpoint not found. Please check server configuration. URL: ${error.config?.url}`);
+        console.error('404 Error Details:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          baseURL: error.config?.baseURL,
+          headers: error.config?.headers
+        });
+      } else if (error.response?.status === 403) {
+        setError('Admin access required. Please log in as admin.');
+      } else if (error.response?.status === 400) {
+        setError(error.response.data?.error || 'Invalid data provided');
+      } else if (error.response?.status === 500) {
+        setError('Server error. Please try again later.');
+      } else if (error.code === 'NETWORK_ERROR') {
+        setError('Network error. Please check your connection and ensure server is running.');
+      } else if (error.code === 'ECONNREFUSED') {
+        setError('Cannot connect to server. Please ensure server is running on port 3001.');
+      } else {
+        setError(`Failed to add teacher: ${error.message || 'Unknown error'}`);
+      }
     }
   };
 
@@ -379,9 +456,18 @@ const AdminDashboard: React.FC = () => {
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Current Teachers</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {teachers.map((teacher) => (
-                      <TeacherCard key={teacher.id} teacher={teacher} onDelete={() => handleDelete('teacher', teacher.id)} t={t} />
-                    ))}
+                    {Array.isArray(teachers) && teachers.length > 0 ? (
+                      teachers.map((teacher) => (
+                        <TeacherCard key={teacher.id} teacher={teacher} onDelete={() => handleDelete('teacher', teacher.id)} t={t} />
+                      ))
+                    ) : (
+                      <div className="col-span-full text-center py-8">
+                        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
+                          <Users className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                          <p className="text-gray-500 dark:text-gray-400">No teachers available</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -409,7 +495,7 @@ const AdminDashboard: React.FC = () => {
                         required
                       >
                         <option value="">Select Teacher</option>
-                        {teachers.map((teacher) => (
+                        {Array.isArray(teachers) && teachers.map((teacher) => (
                           <option key={teacher.id} value={teacher.id}>
                             {teacher.name}
                           </option>
@@ -461,9 +547,18 @@ const AdminDashboard: React.FC = () => {
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Current Classes</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {classes.map((classItem) => (
-                      <ClassCard key={classItem.id} classItem={classItem} onEdit={handleEditClick} onDelete={() => handleDelete('class', classItem.id)} t={t} />
-                    ))}
+                    {Array.isArray(classes) && classes.length > 0 ? (
+                      classes.map((classItem) => (
+                        <ClassCard key={classItem.id} classItem={classItem} onEdit={handleEditClick} onDelete={() => handleDelete('class', classItem.id)} t={t} />
+                      ))
+                    ) : (
+                      <div className="col-span-full text-center py-8">
+                        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
+                          <BookOpen className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                          <p className="text-gray-500 dark:text-gray-400">No classes available</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -483,7 +578,7 @@ const AdminDashboard: React.FC = () => {
                         required
                       >
                         <option value="">Select Class</option>
-                        {classes.filter(c => !c.is_free).map((classItem) => (
+                        {Array.isArray(classes) && classes.filter(c => !c.is_free).map((classItem) => (
                           <option key={classItem.id} value={classItem.id}>
                             {classItem.title} - ${classItem.price}
                           </option>
@@ -533,31 +628,40 @@ const AdminDashboard: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {accessCodes.map((code) => (
-                          <tr key={code.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                            <td className="px-6 py-4 whitespace-nowrap font-mono text-sm text-gray-900 dark:text-white">
-                              {code.code}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                              {code.class_title}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                              ${code.price}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                code.is_used 
-                                  ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' 
-                                  : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                              }`}>
-                                {code.is_used ? 'Used' : 'Available'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                              {code.used_by_name || '-'}
+                        {Array.isArray(accessCodes) && accessCodes.length > 0 ? (
+                          accessCodes.map((code) => (
+                            <tr key={code.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                              <td className="px-6 py-4 whitespace-nowrap font-mono text-sm text-gray-900 dark:text-white">
+                                {code.code}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                {code.class_title}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                ${code.price}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                  code.is_used 
+                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' 
+                                    : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                                }`}>
+                                  {code.is_used ? 'Used' : 'Available'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                {code.used_by_name || '-'}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                              <Key className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                              <p>No access codes available</p>
                             </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
                     </table>
                   </div>

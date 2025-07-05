@@ -69,15 +69,37 @@ const TeacherProfile: React.FC = () => {
         axios.get(`${API_BASE}/teachers/${id}`),
         axios.get(`${API_BASE}/classes?teacher_id=${id}`)
       ]);
-      setTeacher(teacherRes.data);
-      setClasses(classesRes.data);
+      
+      // Safely handle teacher data
+      const teacherData = teacherRes.data;
+      if (teacherData && typeof teacherData === 'object') {
+        setTeacher(teacherData);
+      } else {
+        console.warn('Unexpected teacher data format:', teacherData);
+        setTeacher(null);
+      }
+      
+      // Safely handle classes data
+      const classesData = classesRes.data;
+      if (Array.isArray(classesData)) {
+        setClasses(classesData);
+      } else if (classesData && Array.isArray(classesData.classes)) {
+        setClasses(classesData.classes);
+      } else {
+        console.warn('Unexpected classes data format:', classesData);
+        setClasses([]);
+      }
     } catch (error: any) {
+      console.error('Failed to fetch teacher data:', error);
       if (error.response?.status === 401 || error.response?.status === 403) {
         setAuthError(true);
         setError('Your session has expired. Please log in again to view teacher information.');
       } else {
         setError('Failed to load teacher information. Please try again.');
       }
+      // Set safe defaults to prevent map errors
+      setTeacher(null);
+      setClasses([]);
     } finally {
       setLoading(false);
     }
@@ -295,7 +317,7 @@ const TeacherProfile: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {classes.map((classItem) => (
+            {Array.isArray(classes) && classes.map((classItem) => (
               <div
                 key={classItem.id}
                 className="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden"
